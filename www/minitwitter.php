@@ -8,6 +8,10 @@
         return htmlspecialchars($str, ENT_QUOTES, 'UTF-8');
     }
 
+    function json_to_array($url) {
+        return json_decode(mb_convert_encoding(file_get_contents($url), 'UTF8', 'ASCII,JIS,UTF-8,EUC-JP,SJIS-WIN'),true);
+    }
+
     // 新規メッセージがあれば
     if ( isset($_REQUEST['new_message']) && $_REQUEST['new_message'] != '' ){
         // 先頭30バイトを取得し、改行コードを <br> に置換
@@ -35,6 +39,22 @@
         fwrite($fp, $line);
         }
         fclose($fp);
+    }
+
+    // record training 
+    if ( isset($_REQUEST['part']) && $_REQUEST['part'] != '' ){
+
+        $buf = [$today=>['workout'=>[]]];
+        for ($i=0; isset($_REQUEST['part'][$i]); $i++) {
+            $buf[$today]['workout'] += array([$_REQUEST['part'][$i],$_REQUEST['weight'][$i]]);
+        }
+
+        // 既存メッセージ先頭 4 件を、配列に追加
+        $url = 'train.json';
+        $train_arr = json_to_array($url) ?: [$today=>[]];
+        $buf[$today] += $train_arr[$today];
+        $train_arr += $buf;
+        file_put_contents("train.json" , json_encode($train_arr));
     }
 
     // 日付
@@ -103,15 +123,34 @@
                 echo '<select name=view_d'.$date_cls.'>'.$date_list[0][$date_cls].'</select> ';
                 echo $date_cls === 'day' ? '' : '/ ';
             } ?>
-        <input type='submit' value='search' /></form>
+            <input type='submit' value='search' />
+        </form>
+        
+        <?php
+
+        // $fp = fopen("diet.txt", "r");
+        // while ($line = fgets($fp)) {
+        //     $cols = explode(',', $line, 2);
+        //     $date = $cols[0];
+        //     $message = str_replace('<br>', "\n", $cols[1]);
+        //     if (strpos($date, implode('/', $selected_date_diet)) !== false) {
+        //         echo '日時: '.$date.'<br>メッセージ: '.nl2br(myesc($message));
+        //     }
+        // }
+        ?>
 
 
     <h2>Your effort of TRAINING</h2>
         
         <h3>Record</h3>
         <form action="<?= $_SERVER["SCRIPT_NAME"]?>?<?= microtime() ?>" method="POST">
-            メッセージ: <textarea name="new_message" cols=30 rows=3></textarea>
-            <input type="submit" value="registar">
+            part: <select name="part[]">
+                <option value=Chest>Chest</option>
+                </select>
+            weight: <select name="weight[]">
+                <option value=10>10kg</option>
+                </select>
+            <input type="submit" value="record">
         </form>
 
         <h3>Review</h3>
@@ -122,21 +161,21 @@
                 echo '<select name=view_t'.$date_cls.'>'.$date_list[1][$date_cls].'</select> ';
                 echo $date_cls === 'day' ? '' : '/ ';
             } ?>
-        <input type='submit' value='search' /></form>
+            <input type='submit' value='search' />
+        </form>
 
 
-    <?php
-    $fp = fopen("tweets.txt", "r");
-    while ($line = fgets($fp)) {
-        $cols = explode(',', $line, 2);
-        $date = $cols[0];
-        $message = str_replace('<br>', "\n", $cols[1]);
-        if (strpos($date, implode('/', $selected_date_diet)) !== false) {
-            echo '日時: '.$date.'<br>メッセージ: '.nl2br(myesc($message));
-            // echo '日時: <?= '.myesc($date).' 
-            ## <br>メッセージ: <?= '.nl2br(myesc($message)).'';
+        <?php
+        $url = 'train.json';
+        $train_arr = json_to_array($url);
+        while ($line = fgets($fp)) {
+            $cols = explode(',', $line, 2);
+            $date = $cols[0];
+            $message = str_replace('<br>', "\n", $cols[1]);
+            if (strpos($date, implode('/', $selected_date_diet)) !== false) {
+                echo '日時: '.$date.'<br>メッセージ: '.nl2br(myesc($message));
+            }
         }
-    }
-    ?>
+        ?>
 </body>
 </html>
